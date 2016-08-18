@@ -17,6 +17,16 @@ using namespace std; // for cout
 
 RF24 radio(RPI_V2_GPIO_P1_22, RPI_V2_GPIO_P1_24, BCM2835_SPI_SPEED_8MHZ);
 
+void twobytestoints(char byte1, char byte2, int* Ugreat, int* Usmall)
+{	
+	int Usmall_temp = (int)(byte1);
+    int Ugreat_temp = (int)(byte2<<8);
+    int U= Usmall_temp + Ugreat_temp; 
+    *Ugreat =  U/100;
+	*Usmall = U - *Ugreat*100;
+	return;
+}
+
 int main(int argc, char** argv)
 {
 /* при старте создаётся новый лог-файл, в имени - время (как треки гпс) */
@@ -40,7 +50,7 @@ fclose( file );*/
 ofstream file;  
 file.open (file_name, ios::out);
 file << "Begin \n"; // << endl
-      file  << "i" << ";"<< "BpemR"  << ";"
+      file  << "i" << ";"<< "Timesec"<< ";"<< "BpemR"  << ";"
             <<  "V" << ";"
             <<  "A" << ";"
             <<  "H" << ";"
@@ -76,29 +86,40 @@ cout<<"ПОЕХАЛИ! ~O+= \n";
 // waiting (or not) for cought packets k times and printing them
 while(1)
   { 
-    for (int i=0; i<bufrows; ) // counter if recieved
+	int Agr, Asm; // для отображения цифр до и после запятой
+    
+	for (int i=0; i<bufrows; ) // counter if recieved
     {
       delay(90); // Data is transmitted 5 times/ sec. Wait some time.
       // вставить обработчик завершения?
       
       if (radio.available())
-      {
-        /** Clear measurement values **/ 
-        memset(receivePayload,0,32);
-        /** write to a memory buffer **/ 
-        radio.read(receivePayload[i], 32);
-        
-        // напечатать дату и время
-        // cout << date[i] = ;
-        timesec[i] = time(0);
-	cout << i << ") " << timesec[i] << " ";
-        
-        /** print payload bytes separatelly in decimal format **/
-        for (int digit=0; digit < 32; ++digit)
+		{
+			/** Clear measurement values **/ 
+			memset(receivePayload,0,32);
+			/** write to a memory buffer **/ 
+			radio.read(receivePayload[i], 32);
+			// напечатать дату и время
+			// cout << date[i] = ;
+			timesec[i] = time(0);
+			cout << i << ") " << timesec[i] << " ";
+			
+			/** print payload bytes separatelly in decimal format **/
+			cout  << i << ";" << timesec[i] << ";"<<  nowtime ;
+			
+			printf("%d ", (int)(receivePayload[0][digit])); 
+			/** print known two-bytes payload data **/
+			for (k=1; k<9; k=k+2)
+			{
+				twobytestoints(receivePayload[i][k],receivePayload[i][k+1],&Agr,&Asm);
+				cout << ";" << Agr <<","; if (Asm<10) cout<<"0"; cout << Asm ;
+			}
+		
+			for (int digit=9; digit < 32; ++digit)
             printf("%d ", (int)(receivePayload[i][digit])); 
-        cout <<"\r"; // make a single row
-        ++i; 
-      }
+			cout <<"\r"; // make a single row
+			++i; 
+		}
       
     }
     /** append to a file  **/
@@ -109,11 +130,17 @@ while(1)
     for (int i=1; i<bufrows; ++i) 
     {
       strftime(nowtime, sizeof(nowtime), "%Y-%m-%d-%H-%M-%S", localtime(&timesec[i]));
-      file  << i << ";"<<  nowtime << ";"
-            <<  (int)receivePayload[i][1] << ";"
-            <<  (int)receivePayload[i][3] << ";"
-            <<  (int)receivePayload[i][5] << ";"
-            <<  (int)receivePayload[i][7] << "\n";
+      	  
+	  file  << i << ";" << timesec[i] << ";"<<  nowtime ;
+		for (k=1; k<9; k=k+2)
+		{
+			twobytestoints(receivePayload[i][k],receivePayload[i][k+1],&Agr,&Asm);
+			file << ";" << Agr <<","; if (Asm<10) cout<<"0"; cout << Asm ;
+		}
+		/* and undecoded tail */
+		for (int digit=9; digit < 32; ++digit)
+            printf(";%d", (int)(receivePayload[i][digit])); 
+	  file << "\n";
     }
     
     file.close();
