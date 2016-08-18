@@ -1,4 +1,4 @@
-/* TODO 
+/* TODO
 запуск и остановка по <???>
 при стопе запись остатков
 формат данных: csv
@@ -8,7 +8,7 @@
 // all the startup stuff with headers
 #include <cstdlib>
 #include <iostream>
-#include <fstream> 
+#include <fstream>
 #include <ctime>
 
 #include <RF24/RF24.h> // use installed library
@@ -27,20 +27,25 @@ time_t t = time(0);
 strftime(nowtime, sizeof(nowtime), "%Y-%m-%d-%H-%M-%S", localtime(&t));
 cout << nowtime << '\n';
 
-char* file_name = /*nowtime*/ "mhflog.csv"; // формат год-месяц-день-час-мин-сек-mhflog.csv
+char file_name[31] = "mhflog_";
+strncat(file_name,nowtime,19);
+strcat(file_name,".csv");
+
+// формат год-месяц-день-час-мин-сек-mhflog.csv
+
 /*FILE *file;
 file = fopen( file_name, "w" ); 
 fputs( "Begin \n", file );
 fclose( file );*/
 ofstream file;  
-file.open ("Test.txt", ios::out);
+file.open (file_name, ios::out);
 file << "Begin \n"; // << endl
-      file  << "BpemR"  << ";"
+      file  << "i" << ";"<< "BpemR"  << ";"
             <<  "V" << ";"
-            <<  "A" << ";
+            <<  "A" << ";"
             <<  "H" << ";"
             <<  "Ah" << "\n";
-file.close;
+file.close();
 
 
 /** Setup mhf **/
@@ -60,7 +65,7 @@ radio.startListening(); // ПОЕХАЛИ! ~O+=
 /* this seems to be enough. */ 
 
 /** set up variables **/
-int bufrows = 900; // how many rows in the buffer
+int bufrows = 300;// ~10 times per second. ; // how many rows in the buffer
 char receivePayload[bufrows][33]; // container for payload + "\0"
 time_t timesec[bufrows];
 
@@ -86,6 +91,7 @@ while(1)
         // напечатать дату и время
         // cout << date[i] = ;
         timesec[i] = time(0);
+	cout << i << ") " << timesec[i] << " ";
         
         /** print payload bytes separatelly in decimal format **/
         for (int digit=0; digit < 32; ++digit)
@@ -100,17 +106,17 @@ while(1)
     char thestring = receivePayload[i];
     fputs( thestring, file );*/
     file.open (file_name, ios::app);
-    for (int i=0; i<bufrows; ++i) 
+    for (int i=1; i<bufrows; ++i) 
     {
       strftime(nowtime, sizeof(nowtime), "%Y-%m-%d-%H-%M-%S", localtime(&timesec[i]));
-      file  <<  nowtime << ";"
-            <<  receivePayload[i][1] << ";"
-            <<  receivePayload[i][3] << ";"
-            <<  receivePayload[i][5] << ";"
-            <<  receivePayload[i][7] << "\n";
+      file  << i << ";"<<  nowtime << ";"
+            <<  (int)receivePayload[i][1] << ";"
+            <<  (int)receivePayload[i][3] << ";"
+            <<  (int)receivePayload[i][5] << ";"
+            <<  (int)receivePayload[i][7] << "\n";
     }
     
-    file.close;
+    file.close();
     
   }
 
@@ -118,4 +124,3 @@ printf("Finished\n");
 
 return 0;
 }
-
