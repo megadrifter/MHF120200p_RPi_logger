@@ -34,10 +34,11 @@ int main(int argc, char** argv)
 
 char nowtime[32];
 time_t t = time(0);
-strftime(nowtime, sizeof(nowtime), "%Y-%m-%d-%H-%M-%S", localtime(&t));
+strftime(nowtime, sizeof(nowtime), "%Y-%m-%d_%H-%M-%S", localtime(&t));
 cout << nowtime << '\n';
 
-char file_name[31] = "mhflog_";
+char file_name[58] = "/home/pi/nRF24_logger/logs/";
+strcat(file_name,"mhflog_");
 strncat(file_name,nowtime,19);
 strcat(file_name,".csv");
 
@@ -49,7 +50,7 @@ fputs( "Begin \n", file );
 fclose( file );*/
 ofstream file;  
 file.open (file_name, ios::out);
-file << "Begin \n"; // << endl
+// file << "Begin \n"; // << endl
       file  << "i" << ";"<< "Timesec"<< ";"<< "BpemR"  << ";"
             <<  "V" << ";"
             <<  "A" << ";"
@@ -75,7 +76,7 @@ radio.startListening(); // ПОЕХАЛИ! ~O+=
 /* this seems to be enough. */ 
 
 /** set up variables **/
-int bufrows = 300;// ~10 times per second. ; // how many rows in the buffer
+int bufrows = 600;// ~10 times per second for delay ~100  (depends on delay) ; // how many rows in the buffer
 char receivePayload[bufrows][33]; // container for payload + "\0"
 time_t timesec[bufrows];
 
@@ -89,8 +90,10 @@ while(1)
 	int Agr, Asm; // для отображения цифр до и после запятой
     
 	for (int i=0; i<bufrows; ) // counter if recieved
-    {
-      delay(90); // Data is transmitted 5 times/ sec. Wait some time.
+  
+ {
+ 	  //***** try without delay.   */
+      delay(95); // Data is transmitted 5 times/ sec. Wait some time. 
       // вставить обработчик завершения?
       
       if (radio.available())
@@ -102,21 +105,20 @@ while(1)
 			// напечатать дату и время
 			// cout << date[i] = ;
 			timesec[i] = time(0);
-			cout << i << ") " << timesec[i] << " ";
-			
+
 			/** print payload bytes separatelly in decimal format **/
-			cout  << i << ";" << timesec[i] << ";"<<  nowtime ;
-			
-			printf("%d ", (int)(receivePayload[0][digit])); 
+			cout  << i << ") "<<  nowtime ;
+
+			printf(" %d ", (int)(receivePayload[i][0])); 
 			/** print known two-bytes payload data **/
-			for (k=1; k<9; k=k+2)
+			for (int k=1; k<9; k=k+2)
 			{
 				twobytestoints(receivePayload[i][k],receivePayload[i][k+1],&Agr,&Asm);
-				cout << ";" << Agr <<","; if (Asm<10) cout<<"0"; cout << Asm ;
+				cout << " " << Agr <<","; if (Asm<10) cout<<"0"; cout << Asm ;
 			}
-		
+
 			for (int digit=9; digit < 32; ++digit)
-            printf("%d ", (int)(receivePayload[i][digit])); 
+            printf(" %d ", (int)(receivePayload[i][digit])); 
 			cout <<"\r"; // make a single row
 			++i; 
 		}
@@ -126,20 +128,21 @@ while(1)
     /* file = fopen( file_name, "a" ); 
     char thestring = receivePayload[i];
     fputs( thestring, file );*/
+    cout << "\n writing to file " << file_name << "\n";
     file.open (file_name, ios::app);
     for (int i=1; i<bufrows; ++i) 
     {
-      strftime(nowtime, sizeof(nowtime), "%Y-%m-%d-%H-%M-%S", localtime(&timesec[i]));
+      strftime(nowtime, sizeof(nowtime), "%Y-%m-%d %H:%M:%S", localtime(&timesec[i]));
       	  
-	  file  << i << ";" << timesec[i] << ";"<<  nowtime ;
-		for (k=1; k<9; k=k+2)
+	  file << i << ";" << timesec[i] << ";"<<  nowtime ;
+		for (int k=1; k<9; k=k+2)
 		{
 			twobytestoints(receivePayload[i][k],receivePayload[i][k+1],&Agr,&Asm);
-			file << ";" << Agr <<","; if (Asm<10) cout<<"0"; cout << Asm ;
+			file << ";" << Agr <<","; if (Asm<10) file<<"0"; file << Asm ;
 		}
 		/* and undecoded tail */
 		for (int digit=9; digit < 32; ++digit)
-            printf(";%d", (int)(receivePayload[i][digit])); 
+            file << ";" << (int)(receivePayload[i][digit]); 
 	  file << "\n";
     }
     
