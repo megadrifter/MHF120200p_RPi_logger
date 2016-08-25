@@ -1,7 +1,7 @@
 /* TODO
+ADD milliseconds for input into DashWare
 запуск и остановка по <???>
 при стопе запись остатков
-формат данных: csv
 класс mhfLogger? (начать в отдельном файле .н)
 */
 
